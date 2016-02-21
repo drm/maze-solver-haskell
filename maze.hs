@@ -1,7 +1,13 @@
+import Codec.Picture(readGif)
+
 data T = Wall | Path deriving (Eq, Show)
 data Dir = North | East | South | West 
 data Rot = CW | CCW | Turn | None
 data Pos = Pos Int Int deriving Show
+
+printable Wall  = "#"
+printable Path  = " "
+printableMaze maze = unlines $ map (\row -> foldl (++) "" $ map printable row) maze
 
 maze :: [[T]]
 
@@ -10,7 +16,8 @@ maze =
      [Path, Wall, Wall, Wall, Path],
      [Path, Path, Path, Wall, Path],
      [Path, Wall, Path, Path, Path],
-     [Path, Wall, Wall, Wall, Path]]
+     [Path, Wall, Wall, Wall, Path],
+     [Path, Path, Path, Path, Path]]
 
 at :: Pos -> T
 at (Pos x y) = maze !! x !! y
@@ -57,10 +64,14 @@ turn maze pos dir =
 
 walk :: [[T]] -> Pos -> Dir -> String
 walk maze pos dir = 
-    if turn maze pos dir
+    if turn maze pos dir 
         then "Solved"
         else "Not solved :("
 
+
+parseMaze img = 0
+
 main = do
-    putStrLn $ walk maze (Pos 1 0) East
+    f <- readGif "./maze.gif"
+    putStrLn $ printableMaze $ parseMaze f
 
