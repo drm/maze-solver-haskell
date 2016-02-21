@@ -1,10 +1,9 @@
+import Codec.Picture (readGif)
 
-f :: Int -> IO Int
-f d = do
-    putStr "Foo: "
-    putStrLn $ show d
-    return (d + 1)
+printable 1 = "#"
+printable 0 = " "
+
+p grid = unlines $ map (\row -> foldl (++) "" $ map printable row) grid
 
 main = do
-   a <- f 10 
-   putStrLn $ show a
+    putStrLn $  p [[0, 1, 1, 0, 1], [1, 0, 0, 0, 0]]
