@@ -1,35 +1,28 @@
-import Codec.Picture(readGif)
+import Codec.Picture
 
 data T = Wall | Path deriving (Eq, Show)
-data Dir = North | East | South | West 
+data Dir = North | East | South | West deriving Show
 data Rot = CW | CCW | Turn | None
-data Pos = Pos Int Int deriving Show
+data Pos = Pos Int Int deriving (Eq, Show)
+data State = State Pos Dir deriving Show
+data Maze = Maze [[T]]
 
-printable Wall  = "#"
-printable Path  = " "
-printableMaze maze = unlines $ map (\row -> foldl (++) "" $ map printable row) maze
+printable Wall = "#"
+printable Path = " "
 
-maze :: [[T]]
+at :: Maze -> Pos -> T
+at (Maze maze) (Pos x y) = maze !! x !! y
 
-maze =
-    [[Path, Path, Path, Path, Path],
-     [Path, Wall, Wall, Wall, Path],
-     [Path, Path, Path, Wall, Path],
-     [Path, Wall, Path, Path, Path],
-     [Path, Wall, Wall, Wall, Path],
-     [Path, Path, Path, Path, Path]]
+isEdge (Maze maze) (Pos x y) = x == 0 || y == 0 || x == length maze - 1 || y == length (maze !! x) -1 
 
-at :: Pos -> T
-at (Pos x y) = maze !! x !! y
+valid :: Maze -> Pos -> Bool
+valid (Maze maze) (Pos x y) = x < (length maze) && y < (length $ maze !! x)
 
-valid :: Pos -> Bool
-valid (Pos x y) = x < (length maze) && y < (length $ maze !! x)
-
-move :: Pos -> Dir -> Pos
-move (Pos x y) West = Pos (x - 1) y
-move (Pos x y) East = Pos (x + 1) y
-move (Pos x y) North = Pos x (y - 1)
-move (Pos x y) South = Pos x (y + 1)
+translate :: Pos -> Dir -> Pos
+translate (Pos x y) West = Pos (x - 1) y
+translate (Pos x y) East = Pos (x + 1) y
+translate (Pos x y) North = Pos x (y - 1)
+translate (Pos x y) South = Pos x (y + 1)
 
 rotate :: Dir -> Rot -> Dir
 rotate North CW = East
@@ -43,35 +36,63 @@ rotate d None = d
 rotations :: Dir -> [Dir]
 rotations d = map (rotate d) [CW, None, CCW, Turn]
 
-step :: [[T]] -> Pos -> Dir -> Bool
-step maze pos dir = 
-    let n = move pos dir in
-        if valid n
-            then turn maze n dir
-            else False
+nextPos :: Maze -> Pos -> Dir -> [Dir] -> Maybe State 
+nextPos maze pos dir [] = Nothing
+nextPos maze pos dir l = 
+    let t = head l
+        n = translate pos t in
+        if (valid maze n) && (at maze n == Path)
+            then Just (State n t)
+            else nextPos maze pos dir $ tail l
 
-try_turns :: [[T]] -> Pos -> Dir -> [Dir] -> Bool
-try_turns maze pos dir [] = False
-try_turns maze pos dir l = do
-    let n = move pos $ head l
-    if (valid n) && (at n == Path)
-        then step maze pos $ head l
-        else try_turns maze pos dir $ tail l
+walk :: Maze -> Pos -> Dir -> [Pos] -> IO()
+walk maze pos dir visited = 
+    let n' = nextPos maze pos dir (rotations dir) in
+        case n' of 
+            Just (State pos' dir') -> do
+                if pos `elem` visited && isEdge maze pos
+                    then 
+                        putStrLn $ showMaze maze visited 
+                    else do 
+                        putStrLn $ "next position: " ++ (show pos')
+                        walk maze pos' dir' (pos:visited)
+            Nothing -> 
+                putStrLn "Unsolvable :("
+    
+showMaze :: Maze -> [Pos] -> String
+showMaze (Maze grid) visited = unlines 
+    $ map (
+        \x -> foldl (++) "" 
+        $ map (
+            \y -> if Pos x y  `elem` visited 
+                then if isEdge (Maze grid) (Pos x y) then " " else "."
+                else printable $ at (Maze grid) (Pos x y)
+        ) [0..(length $ grid !! x) - 1]
+    ) [0..(length grid) - 1]
 
-turn :: [[T]] -> Pos -> Dir -> Bool
-turn maze pos dir =
-    try_turns maze pos dir (rotations dir)
+imageToMaze :: DynamicImage -> Maybe Maze
+imageToMaze (ImageRGB8 image@(Image w h _)) = 
+    Just $ Maze ( map (
+        \y -> 
+            map ( 
+                \(PixelRGB8 r _ _) -> 
+                if r == 0 
+                    then Wall
+                    else Path
+            )
+            [pixelAt image x y | x <- [0..w-1]]
+        )
+        [0..h-1]
+    )
 
-walk :: [[T]] -> Pos -> Dir -> String
-walk maze pos dir = 
-    if turn maze pos dir 
-        then "Solved"
-        else "Not solved :("
-
-
-parseMaze img = 0
+imageToMaze _ = Nothing
 
 main = do
     f <- readGif "./maze.gif"
-    putStrLn $ printableMaze $ parseMaze f
-
+    case f of
+        Left _ -> error "Could not read file" 
+        Right i' -> 
+            let m = imageToMaze i' in
+                case m of
+                    Nothing -> error "Could not convert to maze"
+                    Just maze -> walk maze (Pos 1 0) East []
