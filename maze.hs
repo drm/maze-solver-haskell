@@ -54,7 +54,6 @@ try_turns maze pos dir l = do
 turn :: [[T]] -> Pos -> Dir -> Bool
 turn maze pos dir =
     try_turns maze pos dir (rotations dir)
-    putStrLn $ show pos
 
 walk :: [[T]] -> Pos -> Dir -> String
 walk maze pos dir = 
@@ -62,6 +61,6 @@ walk maze pos dir =
         then "Solved"
         else "Not solved :("
 
-main = 
+main = do
     putStrLn $ walk maze (Pos 1 0) East
 
