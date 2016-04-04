@@ -1,10 +1,12 @@
 import Codec.Picture
 
+-- A title represents the type of pixel from the maze
 data Tile 
     = Wall 
     | Path 
     deriving (Eq, Show)
 
+-- Direction represents a current (intended) movement direction
 data Dir 
     = North 
     | East 
@@ -12,16 +14,19 @@ data Dir
     | West 
     deriving Show
 
+-- Rotation indicates a direction the avatar rotates to
 data Rot 
     = CW            -- Rotate clockwise
     | CCW           -- Rotate counter clockwise
     | Turn          -- Turn around
     | None          -- Don't rotate
 
+-- Position represents a point int the map
 data Pos 
     = Pos Int Int           -- A position is composed of two Int coordinates
     deriving (Eq, Show)
 
+-- Current state of the avatar.
 data State 
     = State Pos Dir 
     deriving Show
